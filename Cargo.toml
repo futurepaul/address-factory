@@ -1,0 +1,17 @@
+[package]
+name = "signed-address-generator"
+version = "0.1.0"
+authors = ["Paul Miller <paul@pauljmiller.com>"]
+license = "MIT OR Apache-2.0"
+description = "Generate addresses from an xpub"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bdk = "0.3.0"
+serde = { version = "1.0.123", features = ["derive"] }
+clap = "3.0.0-beta.1"
+serde_json = "1.0.62"
+anyhow = "1.0.38"
+indicatif = "0.15.0"
