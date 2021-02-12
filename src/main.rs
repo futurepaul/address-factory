@@ -1,7 +1,13 @@
 use anyhow::Result;
 use indicatif::ProgressBar;
-use signed_address_generator::{ColdcardJson, gpg_clearsign};
-use std::{fs::{self, File}, io, io::{BufWriter, Write}, path::PathBuf, str::FromStr};
+use signed_address_generator::{gpg_clearsign, ColdcardJson, Database};
+use std::{
+    fs::{self, File},
+    io,
+    io::{BufWriter, Write},
+    path::PathBuf,
+    str::FromStr,
+};
 
 use bdk::{bitcoin, database::MemoryDatabase, Wallet};
 use clap::{Clap, ValueHint};
@@ -28,12 +34,9 @@ struct Opts {
     #[clap(default_value = "This is a donation address for me, Satoshi Nakamoto:")]
     #[clap(about = "A short message to sign along with the address")]
     message: String,
-    #[clap(name = "OUTPUT", short = 'o', long = "output", value_hint = ValueHint::FilePath)]
-    #[clap(parse(from_os_str))]
-    #[clap(
-        about = "Where you'd like to save the generated addresses.\nBy default they're just printed."
-    )]
-    output: Option<PathBuf>,
+    #[clap(short = 'p', long = "print")]
+    #[clap(about = "Print the signed addresses instead of storing them in an SQLite db.")]
+    print: bool,
 }
 
 fn main() -> Result<()> {
@@ -45,7 +48,7 @@ fn main() -> Result<()> {
 
     let desc = parsed_coldcard.get_descriptor(bitcoin::Network::Testnet);
 
-    println!("{}", desc.0);
+    println!("Descriptor: {}", desc.0);
 
     let wallet = Wallet::new_offline(
         desc,
@@ -54,62 +57,42 @@ fn main() -> Result<()> {
         MemoryDatabase::default(),
     )?;
 
-    match opts.output {
-        // If we get a file to write to, put the addresses there
-        Some(path) => {
-            // From the std docs:
-            // > This function will create a file if it does not exist,
-            // > and will truncate it if it does.
-            let mut file = File::create(path)?;
+    // Skip all these addresses by asking for them
+    // TODO: figure out how to just start from an index
+    for _i in 0..opts.start_from {
+        wallet.get_new_address()?;
+    }
 
-            let pb = ProgressBar::new(opts.start_from);
+    if opts.print {
+        // Now we're actually generating the addresses we care about
+        for _i in 0..opts.number_to_generate {
+            let stdout = io::stdout();
+            let mut handle = stdout.lock();
+            let addy = wallet.get_new_address()?;
 
-            // Skip all these addresses by asking for them
-            // TODO: figure out how to just start from an index
-            for i in 0..opts.start_from {
-                wallet.get_new_address()?;
-
-                // This takes non-zero time so here's a progress bar
-                pb.set_message(&format!("skipping #{}", i + 1));
-                pb.inc(1);
-            }
-
-            pb.finish_with_message("done skipping");
-
-            let pb = ProgressBar::new(opts.number_to_generate);
-
-            // Now we're actually generating the addresses we care about
-            for i in 0..opts.number_to_generate {
-                let addy = wallet.get_new_address()?;
-
-                // pgp sign the address along with our message
-                let signed = gpg_clearsign(&addy.to_string(), &opts.message)?;
-                writeln!(file, "{}", signed)?; 
-
-                pb.set_message(&format!("generating #{}", i + 1));
-                pb.inc(1);
-            }
-
-            pb.finish_with_message("done generating");
+            // pgp sign the address along with our message
+            let signed = gpg_clearsign(&addy.to_string(), &opts.message)?;
+            writeln!(handle, "{}", signed)?;
         }
-        // Otherwise just print to stdout
-        // TODO: there's probably a more generic way to do this
-        // so we don't have to duplicate code
-        None => {
-            for _i in 0..opts.start_from {
-                wallet.get_new_address()?;
-            }
+    } else {
+        // Create a new SQLite db file and connect to it
+        let db = Database::new()?;
 
-            for _i in 0..opts.number_to_generate {
-                let stdout = io::stdout();
-                let mut handle = stdout.lock();
-                let addy = wallet.get_new_address()?;
+        // Don't want people staring at a blank prompt for minutes
+        let pb = ProgressBar::new(opts.number_to_generate);
 
-                // pgp sign the address along with our message
-                let signed = gpg_clearsign(&addy.to_string(), &opts.message)?;
-                writeln!(handle, "{}", signed)?; 
-            }
+        for i in 0..opts.number_to_generate {
+            let addy = wallet.get_new_address()?.to_string();
+
+            let signed = gpg_clearsign(&addy, &opts.message)?;
+
+            db.insert(&addy, &signed)?;
+
+            pb.set_message(&format!("generating #{}", i + 1));
+            pb.inc(1);
         }
+
+        pb.finish_with_message("done generating");
     }
 
     Ok(())
