@@ -8,10 +8,20 @@ pub struct Database {
 }
 
 #[derive(Debug)]
-struct Entry {
+pub struct Entry {
     id: i32,
     address: String,
     message: String,
+}
+
+impl Entry {
+    pub fn new(address: &str, signed_message: &str) -> Self {
+        Self {
+            id: 0,
+            address: address.to_string(),
+            message: signed_message.to_string(),
+        }
+    }
 }
 
 impl Database {
@@ -33,13 +43,7 @@ impl Database {
         Ok(Self { connection: conn })
     }
 
-    pub fn insert(&self, address: &str, signed_message: &str) -> Result<()> {
-        let entry = Entry {
-            id: 0,
-            address: address.to_string(),
-            message: signed_message.to_string(),
-        };
-
+    pub fn insert(&self, entry: Entry) -> Result<()> {
         self.connection.execute(
             "INSERT INTO entries (address, message) VALUES (?1, ?2)",
             params![entry.address, entry.message],

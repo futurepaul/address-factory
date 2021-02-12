@@ -1,18 +1,16 @@
 use anyhow::Result;
 use indicatif::ProgressBar;
-use signed_address_generator::{gpg_clearsign, ColdcardJson, Database};
-use std::{
-    fs::{self, File},
-    io,
-    io::{BufWriter, Write},
-    path::PathBuf,
-    str::FromStr,
-};
+use signed_address_generator::{gpg_clearsign, ColdcardJson, Database, Entry};
+use std::{fs, io, io::Write, path::PathBuf, str::FromStr};
 
-use bdk::{bitcoin, database::MemoryDatabase, Wallet};
+use bdk::{
+    bitcoin::{self, Address},
+    database::MemoryDatabase,
+    Wallet,
+};
 use clap::{Clap, ValueHint};
 
-#[derive(Clap)]
+#[derive(Clap, Clone)]
 #[clap(about = r"
 Generate addresses from a Coldcard's xpub.
 To use this you'll need a coldcard-export.json file.
@@ -59,8 +57,11 @@ fn main() -> Result<()> {
 
     // Skip all these addresses by asking for them
     // TODO: figure out how to just start from an index
-    for _i in 0..opts.start_from {
-        wallet.get_new_address()?;
+    if opts.start_from > 0 {
+        println!("Skipping addresses...");
+        for _i in 0..opts.start_from {
+            wallet.get_new_address()?;
+        }
     }
 
     if opts.print {
@@ -81,18 +82,30 @@ fn main() -> Result<()> {
         // Don't want people staring at a blank prompt for minutes
         let pb = ProgressBar::new(opts.number_to_generate);
 
-        for i in 0..opts.number_to_generate {
-            let addy = wallet.get_new_address()?.to_string();
+        let mut addresses: Vec<Address> = vec![];
 
-            let signed = gpg_clearsign(&addy, &opts.message)?;
-
-            db.insert(&addy, &signed)?;
-
-            pb.set_message(&format!("generating #{}", i + 1));
+        println!("Generating addresses...");
+        for _i in 0..opts.number_to_generate {
+            addresses.push(wallet.get_new_address()?);
             pb.inc(1);
         }
 
         pb.finish_with_message("done generating");
+
+        let message_text = &opts.message;
+
+        // Would be nice to do this in parallel with rayon but gpg doesn't like that
+        println!("PGP signing addresses...");
+        let pb = ProgressBar::new(opts.number_to_generate);
+        for address in addresses {
+            let address = address.to_string();
+            let signed_message = gpg_clearsign(&address.to_string(), message_text).unwrap();
+            pb.inc(1);
+            let entry = Entry::new(&address, &signed_message);
+            db.insert(entry)?;
+        }
+
+        pb.finish_with_message("done signing");
     }
 
     Ok(())
