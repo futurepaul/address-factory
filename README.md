@@ -12,4 +12,5 @@ Advanced > MicroSD Card > Export Wallet > Generic JSON
 
 - [ ] come up with a better name
 - [x] sign the addresses with gpg
-- [ ] write the signed addresses to an sqlite db
+- [x] write the signed addresses to an sqlite db
+- [ ] parse non-coldcard xpubs 
