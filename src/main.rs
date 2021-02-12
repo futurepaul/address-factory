@@ -1,18 +1,10 @@
 use anyhow::Result;
 use indicatif::ProgressBar;
-use std::{
-    fs::{self, File},
-    io,
-    io::Write,
-    path::PathBuf,
-    str::FromStr,
-};
+use signed_address_generator::{ColdcardJson, gpg_clearsign};
+use std::{fs::{self, File}, io, io::{BufWriter, Write}, path::PathBuf, str::FromStr};
 
 use bdk::{bitcoin, database::MemoryDatabase, Wallet};
 use clap::{Clap, ValueHint};
-use coldcard::ColdcardJson;
-
-mod coldcard;
 
 #[derive(Clap)]
 #[clap(about = r"
@@ -32,10 +24,14 @@ struct Opts {
     #[clap(short = 'f', long = "from", default_value = "0")]
     #[clap(about = "The number of addresses to skip (because you've used them before)")]
     start_from: u64,
+    #[clap(short = 'm', long = "message")]
+    #[clap(default_value = "This is a donation address for me, Satoshi Nakamoto:")]
+    #[clap(about = "A short message to sign along with the address")]
+    message: String,
     #[clap(name = "OUTPUT", short = 'o', long = "output", value_hint = ValueHint::FilePath)]
     #[clap(parse(from_os_str))]
     #[clap(
-        about = "Where you'd like to save the generated addresses. By default they're just printed."
+        about = "Where you'd like to save the generated addresses.\nBy default they're just printed."
     )]
     output: Option<PathBuf>,
 }
@@ -69,6 +65,7 @@ fn main() -> Result<()> {
             let pb = ProgressBar::new(opts.start_from);
 
             // Skip all these addresses by asking for them
+            // TODO: figure out how to just start from an index
             for i in 0..opts.start_from {
                 wallet.get_new_address()?;
 
@@ -83,8 +80,11 @@ fn main() -> Result<()> {
 
             // Now we're actually generating the addresses we care about
             for i in 0..opts.number_to_generate {
-                // Write the address as a new line in our file
-                writeln!(file, "{}", wallet.get_new_address()?)?;
+                let addy = wallet.get_new_address()?;
+
+                // pgp sign the address along with our message
+                let signed = gpg_clearsign(&addy.to_string(), &opts.message)?;
+                writeln!(file, "{}", signed)?; 
 
                 pb.set_message(&format!("generating #{}", i + 1));
                 pb.inc(1);
@@ -93,6 +93,8 @@ fn main() -> Result<()> {
             pb.finish_with_message("done generating");
         }
         // Otherwise just print to stdout
+        // TODO: there's probably a more generic way to do this
+        // so we don't have to duplicate code
         None => {
             for _i in 0..opts.start_from {
                 wallet.get_new_address()?;
@@ -101,7 +103,11 @@ fn main() -> Result<()> {
             for _i in 0..opts.number_to_generate {
                 let stdout = io::stdout();
                 let mut handle = stdout.lock();
-                writeln!(handle, "{}", wallet.get_new_address()?)?;
+                let addy = wallet.get_new_address()?;
+
+                // pgp sign the address along with our message
+                let signed = gpg_clearsign(&addy.to_string(), &opts.message)?;
+                writeln!(handle, "{}", signed)?; 
             }
         }
     }
