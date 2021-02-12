@@ -5,6 +5,7 @@ use rusqlite::{params, Connection};
 #[derive(Debug)]
 pub struct Database {
     connection: Connection,
+    pub filename: String,
 }
 
 #[derive(Debug)]
@@ -30,9 +31,9 @@ impl Database {
         let filename = format!("{}_signed_addresses.db", date_time);
 
         // TODO: fail gracefully if the filename already exists
-        let conn = Connection::open(filename)?;
+        let connection = Connection::open(filename.clone())?;
 
-        conn.execute(
+        connection.execute(
             "CREATE TABLE entries (
                   id              INTEGER PRIMARY KEY AUTOINCREMENT,
                   address         TEXT NOT NULL,
@@ -40,7 +41,10 @@ impl Database {
                   )",
             params![],
         )?;
-        Ok(Self { connection: conn })
+        Ok(Self {
+            connection,
+            filename,
+        })
     }
 
     pub fn insert(&self, entry: Entry) -> Result<()> {

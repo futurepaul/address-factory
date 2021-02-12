@@ -90,7 +90,7 @@ fn main() -> Result<()> {
             pb.inc(1);
         }
 
-        pb.finish_with_message("done generating");
+        pb.finish();
 
         let message_text = &opts.message;
 
@@ -105,7 +105,12 @@ fn main() -> Result<()> {
             db.insert(entry)?;
         }
 
-        pb.finish_with_message("done signing");
+        pb.finish();
+
+        println!(
+            "Wrote {} addresses and PGP signed messages to {}",
+            opts.number_to_generate, db.filename
+        );
     }
 
     Ok(())
