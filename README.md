@@ -8,8 +8,8 @@ To get the xpub I'm using the bip84 from [this file](https://github.com/Coldcard
 Advanced > MicroSD Card > Export Wallet > Generic JSON
 ```
 
-TODO:
+## TODO
 
 - [ ] come up with a better name
-- [ ] verify the addresses with bitcoind
-- [ ] actually sign the addresses this generates
+- [x] sign the addresses with gpg
+- [ ] write the signed addresses to an sqlite db
