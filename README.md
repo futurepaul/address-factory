@@ -11,5 +11,5 @@ Advanced > MicroSD Card > Export Wallet > Generic JSON
 ## TODO
 
 - [ ] come up with a better name
-- [x] signe the addresses with gpg
+- [x] sign the addresses with gpg
 - [ ] write the signed addresses to an sqlite db
