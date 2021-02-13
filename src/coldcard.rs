@@ -1,16 +1,14 @@
 use std::str::FromStr;
+use anyhow::{anyhow, bail, Result};
 
-use bdk::{
-    bitcoin,
-    descriptor::{get_checksum, ExtendedDescriptor, KeyMap, ToWalletDescriptor},
-};
+use bdk::{Wallet, bitcoin, database::MemoryDatabase, descriptor::{DescriptorError, ExtendedDescriptor, KeyMap, ToWalletDescriptor, get_checksum}};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Bip84Json {
     _pub: String,
     deriv: String,
-    first: String,
+    pub first: String,
     name: String,
     xfp: String,
     pub xpub: String,
@@ -21,11 +19,13 @@ pub struct ColdcardJson {
     chain: String,
     pub xfp: String,
     xpub: String,
+    // TODO: use the account, yes?
     account: u64,
     pub bip84: Bip84Json,
 }
 
 fn build_descriptor(xpub: &str, fingerprint: &str) -> String {
+    // m / purpose' / coin_type' / account' / change / index
     let hardened_derivation_path = "m/84h/1h/0h";
 
     let origin_prefix = hardened_derivation_path.replace("m", &fingerprint.to_lowercase());
@@ -33,7 +33,7 @@ fn build_descriptor(xpub: &str, fingerprint: &str) -> String {
     let descriptor_part = format!("[{}]{}", origin_prefix, xpub);
 
     let is_change = false;
-    let inner = format!("{}/{}/*", descriptor_part, is_change as u32);
+    let inner = format!("{}/{}/1", descriptor_part, is_change as u32);
 
     let descriptor = format!("wpkh({})", inner);
 
@@ -41,15 +41,28 @@ fn build_descriptor(xpub: &str, fingerprint: &str) -> String {
 }
 
 impl ColdcardJson {
-    pub fn get_descriptor(&self, network: bitcoin::Network) -> (ExtendedDescriptor, KeyMap) {
+    pub fn get_descriptor(&self, network: bitcoin::Network) -> Result<(ExtendedDescriptor, KeyMap)> {
         if &self.chain != "XTN" {
             panic!("We only support tpub right now")
         }
 
         let descriptor = build_descriptor(&self.bip84.xpub, &self.xfp);
 
-        descriptor.to_wallet_descriptor(network).unwrap()
+        match descriptor.to_wallet_descriptor(network) {
+            Ok(descriptor_pair) => Ok(descriptor_pair),
+            Err(e) => Err(anyhow!("{}", e))
+        }
     }
+
+    pub fn check_first_address(&self, wallet: &Wallet<(), MemoryDatabase>) -> Result<()> {
+        let address = wallet.get_new_address()?.to_string();
+        let first = self.bip84.first.clone(); 
+        if address == self.bip84.first {
+            Ok(()) } else {
+            bail!("The first address isn't what we expected it to be. There might be something wrong with the descriptor / xpub / derivation path.\nGot {}\nExpected {}", address, first)
+        }
+    }
+
 }
 
 impl FromStr for ColdcardJson {

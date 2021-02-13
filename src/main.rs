@@ -44,7 +44,7 @@ fn main() -> Result<()> {
 
     let parsed_coldcard = ColdcardJson::from_str(&wallet_json)?;
 
-    let desc = parsed_coldcard.get_descriptor(bitcoin::Network::Testnet);
+    let desc = parsed_coldcard.get_descriptor(bitcoin::Network::Testnet)?;
 
     println!("Descriptor: {}", desc.0);
 
@@ -54,6 +54,8 @@ fn main() -> Result<()> {
         bitcoin::Network::Testnet,
         MemoryDatabase::default(),
     )?;
+
+    parsed_coldcard.check_first_address(&wallet)?;
 
     // Skip all these addresses by asking for them
     // TODO: figure out how to just start from an index

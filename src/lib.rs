@@ -1,6 +1,7 @@
 mod coldcard;
 mod database;
 mod gpg;
+mod generator_state;
 
 pub use coldcard::ColdcardJson;
 pub use database::{Database, Entry};
