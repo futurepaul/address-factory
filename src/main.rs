@@ -1,6 +1,6 @@
 use anyhow::Result;
 use indicatif::ProgressBar;
-use signed_address_generator::{gpg_clearsign, ColdcardJson, Database, Entry};
+use signed_address_generator::{gpg_clearsign, ColdcardJson, Database, Entry, GeneratorState};
 use std::{fs, io, io::Write, path::PathBuf, str::FromStr};
 
 use bdk::{
@@ -17,11 +17,18 @@ To use this you'll need a coldcard-export.json file.
 On your Coldcard go to:
   Advanced > MicroSD Card > Export Wallet > Generic JSON")]
 struct Opts {
-    #[clap(name = "PATH/TO/coldcard-export.json")]
+    #[clap(name = "PATH/TO/JSON")]
     #[clap(value_hint = ValueHint::FilePath)]
     #[clap(parse(from_os_str))]
-    #[clap(about = "This file is exported by your Coldcard")]
+    #[clap(
+        about = "This can be either a coldcard-export.json if you're starting from scratch. Or a signed-address-generator-state.json if you want to generate additional addresses from a known index."
+    )]
     path: PathBuf,
+    #[clap(arg_enum)]
+    // TODO: explain
+    #[clap(about = "TODO explain how to use this")]
+    #[clap(long = "mode")]
+    mode: Mode,
     #[clap(short = 'n', long = "number", default_value = "100")]
     #[clap(about = "The number of addresses you want to generate")]
     number_to_generate: u64,
@@ -37,44 +44,59 @@ struct Opts {
     print: bool,
 }
 
-fn main() -> Result<()> {
-    let opts: Opts = Opts::parse();
+// If you have a coldcard this just does everything automatically.
+// If you are using another thing you have to paste in your xpub and derivation path
+// it shows you the first address and you confirm that it is correct or that you don't care
 
-    let wallet_json = fs::read_to_string(opts.path)?;
+#[derive(Clap, Clone, Debug, PartialEq)]
+enum Mode {
+    // Get xpub and derivation path
+    #[clap(name = "new")]
+    ImportGeneric,
+    // Get coldcard-export.json
+    #[clap(name = "coldcard")]
+    ImportColdcard,
+    // Get signed-address-generator.json
+    #[clap(name = "more")]
+    DeriveMoreAddresses,
+}
 
-    let parsed_coldcard = ColdcardJson::from_str(&wallet_json)?;
+fn do_the_work(generator_state: &mut GeneratorState, should_print: bool) -> Result<()> {
+    // TODO: should network be a flag?
+    let network = bitcoin::Network::Testnet;
 
-    let desc = parsed_coldcard.get_descriptor(bitcoin::Network::Testnet)?;
+    let desc = generator_state.get_descriptor(network)?;
 
     println!("Descriptor: {}", desc.0);
 
-    let wallet = Wallet::new_offline(
-        desc,
-        None,
-        bitcoin::Network::Testnet,
-        MemoryDatabase::default(),
-    )?;
+    let wallet = Wallet::new_offline(desc, None, network, MemoryDatabase::default())?;
 
-    parsed_coldcard.check_first_address(&wallet)?;
-
-    // Skip all these addresses by asking for them
+        // Skip all these addresses by asking for them
     // TODO: figure out how to just start from an index
-    if opts.start_from > 0 {
+    if generator_state.next_index > 0 {
         println!("Skipping addresses...");
-        for _i in 0..opts.start_from {
+        for _i in 0..generator_state.next_index {
             wallet.get_new_address()?;
         }
     }
 
-    if opts.print {
+    // If we skip none, then this is the first address.
+    // If we skip N, then N + 1 should be the first
+    let first_address = generator_state.check_first_address(&wallet)?;
+
+    if should_print {
         // Now we're actually generating the addresses we care about
-        for _i in 0..opts.number_to_generate {
+        for i in 0..generator_state.number_to_generate {
             let stdout = io::stdout();
             let mut handle = stdout.lock();
-            let addy = wallet.get_new_address()?;
+            let addy = if i == 0 {
+                first_address.clone()
+            } else {
+                wallet.get_new_address()?
+            };
 
             // pgp sign the address along with our message
-            let signed = gpg_clearsign(&addy.to_string(), &opts.message)?;
+            let signed = gpg_clearsign(&addy.to_string(), &generator_state.message)?;
             writeln!(handle, "{}", signed)?;
         }
     } else {
@@ -82,23 +104,31 @@ fn main() -> Result<()> {
         let db = Database::new()?;
 
         // Don't want people staring at a blank prompt for minutes
-        let pb = ProgressBar::new(opts.number_to_generate);
+        let pb = ProgressBar::new(generator_state.number_to_generate);
 
         let mut addresses: Vec<Address> = vec![];
 
         println!("Generating addresses...");
-        for _i in 0..opts.number_to_generate {
-            addresses.push(wallet.get_new_address()?);
+        for i in 0..generator_state.number_to_generate {
+            let addy = if i == 0 {
+                first_address.clone()
+            } else {
+                wallet.get_new_address()?
+            };
+
+            addresses.push(addy);
             pb.inc(1);
         }
 
+        dbg!(addresses.clone());
+
         pb.finish();
 
-        let message_text = &opts.message;
+        let message_text = &generator_state.message;
 
         // Would be nice to do this in parallel with rayon but gpg doesn't like that
         println!("PGP signing addresses...");
-        let pb = ProgressBar::new(opts.number_to_generate);
+        let pb = ProgressBar::new(generator_state.number_to_generate);
         for address in addresses {
             let address = address.to_string();
             let signed_message = gpg_clearsign(&address.to_string(), message_text).unwrap();
@@ -109,11 +139,49 @@ fn main() -> Result<()> {
 
         pb.finish();
 
+        generator_state.finish(wallet.get_new_address()?.to_string());
+        generator_state.save()?;
+
         println!(
             "Wrote {} addresses and PGP signed messages to {}",
-            opts.number_to_generate, db.filename
+            generator_state.number_to_generate, db.filename
+        );
+
+        println!(
+            "Saved this setup to signed-address-generator-state.json.\nNext time use that file and --mode more"
         );
     }
 
     Ok(())
+}
+
+fn main() -> Result<()> {
+    let opts: Opts = Opts::parse();
+
+    match opts.mode {
+        Mode::ImportGeneric => {
+            todo!("We don't support this yet.")
+        }
+        Mode::ImportColdcard => {
+            let wallet_json = fs::read_to_string(opts.path)?;
+            let parsed_coldcard = ColdcardJson::from_str(&wallet_json)?;
+            let desc = parsed_coldcard.build_descriptor_string();
+
+            // TODO: this only makes sense when we're starting from zero yeah?
+            let next_address = parsed_coldcard.get_first_addresss();
+
+            let mut generator_state = GeneratorState::new(
+                desc,
+                opts.start_from,
+                opts.number_to_generate,
+                next_address,
+                opts.message,
+            );
+            do_the_work(&mut generator_state, opts.print)
+        }
+        Mode::DeriveMoreAddresses => {
+            let mut generator_state = GeneratorState::from_path(opts.path)?;
+            do_the_work(&mut generator_state, opts.print)
+        }
+    }
 }
