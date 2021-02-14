@@ -17,6 +17,17 @@ To use this you'll need a coldcard-export.json file.
 On your Coldcard go to:
   Advanced > MicroSD Card > Export Wallet > Generic JSON")]
 struct Opts {
+    // TODO: Consider re-ordering to 
+    // 1. Ask user to Select Mode (New or Continue)
+    //     If New, Ask whether using ColdCard or Generic
+    //     If Continue, Jump to 6
+    // 2. If New ColdCard, ask user to select colcard-export.json. Load these parameters into memory and go to 4
+    // 3. If New Generic, ask user for xpub, derivation path, fingerprint & first address. Load these parameters into memory and go to 4
+    // 4. Check that the derived first address matches the expected first address. If yes, go to 5. If no, error message.
+    // 5. Ask how many addresses to generate, what index to start from & message to sign -> Generate signed-address-generator.json
+    // 6. Load signed-address-generator.json into memory and display key info, ask user to press 'E' to edit a value (e.g. number of addresses) or 'Enter' to proceed
+    // 7. Run program to generate addresses, sign them and put them into a database
+
     #[clap(name = "PATH/TO/JSON")]
     #[clap(value_hint = ValueHint::FilePath)]
     #[clap(parse(from_os_str))]
@@ -168,6 +179,7 @@ fn main() -> Result<()> {
             let desc = parsed_coldcard.build_descriptor_string();
 
             // TODO: this only makes sense when we're starting from zero yeah?
+            // Regardless of the start index this must be checked
             let next_address = parsed_coldcard.get_first_addresss();
 
             let mut generator_state = GeneratorState::new(
