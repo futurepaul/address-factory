@@ -9,6 +9,10 @@ use std::{
     process::{Command, Stdio},
 };
 
+// TODO: Parallel sign
+// TODO: Give ETA
+// TODO: Option for user to cancel and retry with fewer addresses
+
 /// Pass the address you want signed along with a friendly message
 /// Something like "This is a donation address for me, Satoshi Nakamoto:"
 pub fn gpg_clearsign(address: &str, message: &str) -> Result<String> {
