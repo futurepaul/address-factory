@@ -15,6 +15,7 @@ pub struct GeneratorState {
 }
 
 impl GeneratorState {
+    // Create a .json containing all the information necessary to derive more addresses
     pub fn new(descriptor: String, next_index: u64, number_to_generate: u64, next_address: String, message: String) -> Self {
         Self {
             descriptor,
@@ -24,6 +25,8 @@ impl GeneratorState {
             message,
         }
     }
+
+    // Get path to .json from user
     pub fn from_path(path: PathBuf) -> Result<Self> {
         let state_json = fs::read_to_string(path)?;
         let gen_state = serde_json::from_str(&state_json)?;
@@ -31,25 +34,28 @@ impl GeneratorState {
         Ok(gen_state)
     }
 
+    // Increment the next_index
     pub fn finish(&mut self, peek_next_address: String) {
         let old_next_index = self.next_index;
         self.next_index = old_next_index + self.number_to_generate; 
         self.next_address = peek_next_address;
     }
 
+    // Save the .json
     pub fn save(&self) -> Result<()> {
         let mut f = File::create("signed-address-generator-state.json")?;
         serde_json::to_writer_pretty(f, self)?;
         Ok(())
     }
 
+// Check that first address derived matches that expected (if provided)    
 pub fn check_first_address(&self, wallet: &Wallet<(), MemoryDatabase>) -> Result<Address> {
         let address = wallet.get_new_address()?;
         let next = self.next_address.clone(); 
-        println!("Checking for a match\naddy: {}\nshould be: {}", address.clone(), next.clone());
+        println!("Checking first address\nDerived:  {}\nExpected: {}", address.clone(), next.clone());
         if address.to_string() == next {
             Ok(address) } else {
-            bail!("The first generated address isn't what we expected it to be. There might be something wrong with the descriptor / xpub / derivation path.\nGot {}\nExpected {}", address, next)
+            bail!("Incorrect first address derived. Check descriptor / xpub / derivation path.")
         }
     }
 
