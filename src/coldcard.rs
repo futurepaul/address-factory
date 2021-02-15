@@ -1,7 +1,7 @@
 use std::str::FromStr;
-use anyhow::{anyhow, bail, Result};
+use anyhow::Result;
 
-use bdk::{Wallet, bitcoin, database::MemoryDatabase, descriptor::{DescriptorError, ExtendedDescriptor, KeyMap, ToWalletDescriptor, get_checksum}};
+use bdk::descriptor::get_checksum;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

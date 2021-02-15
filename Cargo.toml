@@ -17,3 +17,6 @@ anyhow = "1.0.38"
 indicatif = "0.15.0"
 rusqlite = { version = "0.24.2", features = ["bundled"] }
 chrono = "0.4.19"
+dialoguer = "0.7.1"
+slip132 = { version = "0.3.2", features = ["serde"] }
+bitcoin = "=0.26.0"
