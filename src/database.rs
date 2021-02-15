@@ -26,6 +26,8 @@ impl Entry {
 }
 
 impl Database {
+    // Create SQLite database of addresses & signed messages
+
     pub fn new() -> Result<Self> {
         let date_time = Local::now().format("%Y-%m-%d_%H-%M").to_string();
         let filename = format!("{}_signed_addresses.db", date_time);

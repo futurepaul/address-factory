@@ -21,11 +21,13 @@ pub struct ColdcardJson {
     xpub: String,
     // TODO: use the account, yes?
     account: u64,
+    // TODO: use other address types?
     pub bip84: Bip84Json,
 }
 
 fn build_descriptor(xpub: &str, fingerprint: &str) -> String {
     // m / purpose' / coin_type' / account' / change / index
+    // TODO: use the account & other address types?
     let hardened_derivation_path = "m/84h/1h/0h";
 
     let origin_prefix = hardened_derivation_path.replace("m", &fingerprint.to_lowercase());
@@ -34,7 +36,7 @@ fn build_descriptor(xpub: &str, fingerprint: &str) -> String {
 
     let is_change = false;
     let inner = format!("{}/{}/*", descriptor_part, is_change as u32);
-
+    // TODO: use the selected address type (not hardcoded)
     let descriptor = format!("wpkh({})", inner);
 
     format!("{}#{}", descriptor, get_checksum(&descriptor).unwrap())
