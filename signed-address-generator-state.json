@@ -1,7 +1,7 @@
 {
   "descriptor": "wpkh([5806f998/84h/1h/0h]tpubDCHCHHJJweJK8t8egF6341Zg12CDNqXyXVU9NRp1KHjoPBRcbRrWvMpjqzhjWLUoyc12ArBqNV7j6trxUWDFcjfE7DASYTaP8vhYrUMcAed/0/*)#sd0wc6nn",
-  "next_index": 30,
+  "next_index": 40,
   "number_to_generate": 10,
-  "next_address": "tb1ql4y2xf060q8x8k6pe6tu0ee2n90k04wfkfjeqw",
+  "next_address": "tb1qnfu8ljhltw3jhvxpwa6sa8p8a7gk0nj6qyaz3r",
   "message": "This is a donation address for me, Satoshi Nakamoto:"
 }
