@@ -1,4 +1,5 @@
 /target
 coldcard-export.json
+bitcoin-core.txt
 test.txt
 *.db
