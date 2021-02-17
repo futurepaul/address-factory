@@ -24,9 +24,9 @@ fn main() -> Result<()> {
     println!("");
     let network: bitcoin::Network = bitcoin::Network::from_str(network_selections[network_choice])?;
 
-    // STEP 2: enter your xpub
+    // STEP 2: enter your extended public key 
     let xpub: String = Input::with_theme(&theme)
-        .with_prompt("Enter your xpub / ypub / zpub")
+        .with_prompt("Enter your full extended public key with prefix (e.g. xpub123 / ypub123 / zpub123)"
         .interact()?;
     println!("");
     let actual_xpub = ExtendedPubKey::from_slip132_str(&xpub)?;
@@ -63,6 +63,7 @@ fn main() -> Result<()> {
     println!("");
 
     // STEP 5: first address as sanity check
+    // TODO: Enter 'any' address and we scan the first 10000 for a match
     println!("Enter this wallet's first address to make sure everything is correct");
     let first_address: String = Input::with_theme(&theme)
         .with_prompt("Enter your wallet's first address")

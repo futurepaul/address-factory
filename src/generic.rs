@@ -44,13 +44,13 @@ fn build_descriptor(
 ) -> Result<String> {
     // m / purpose' / coin_type' / account' / change / index
     // TODO: if network is regtest or testnet, make sure coin_type is 1
-    let origin_prefix = derivation_path.replace("m", &fingerprint.to_lowercase());
-    let hardened = origin_prefix.replace("'", "h");
+    let derivation_path = derivation_path.replace("m", &fingerprint.to_lowercase()).replace("'", "h");
 
-    let descriptor_part = format!("[{}]{}", hardened, xpub);
+    let descriptor_part = format!("[{}]{}", derivation_path, xpub);
 
     let is_change = false;
 
+    // TODO: This is assuming account = 0 ?
     let inner = format!("{}/{}/*", descriptor_part, is_change as u32);
 
     let script_type = script_type_from_path(derivation_path)?;
