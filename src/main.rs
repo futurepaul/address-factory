@@ -10,35 +10,6 @@ use bdk::{
 };
 use clap::{Clap, ValueHint};
 
-// TODO: Consider re-ordering to 
-    // 1. Ask user to Select Mode (New or Continue)
-    //     If New, Ask whether using ColdCard or Generic
-    //     If Continue, Jump to 6
-    // 2. If New ColdCard, ask user to select colcard-export.json. Load these parameters into memory and go to 4
-    // 3. If New Generic, ask user for xpub, derivation path, fingerprint & first address. Load these parameters into memory and go to 4
-    // 4. Check that the derived first address matches the expected first address. If yes, go to 5. If no, error message.
-    // 5. Ask how many addresses to generate, what index to start from & message to sign -> Generate signed-address-generator.json
-    // 6. Load signed-address-generator.json into memory and display key info, ask user to press 'E' to edit a value (e.g. number of addresses) or 'Enter' to proceed
-    // 7. Run program to generate addresses, sign them and put them into a database
-struct GenericXpub {
-    xpub: String,
-    derivation_path: String,
-    fingerprint: String,
-    first_address: String
-}
-
-struct App {
-    // Step 1
-    mode: Mode,
-    // Step 2
-    path: Option<PathBuf>,
-    // Step 3 and also 6
-    descriptor: String,
-    // TODO print: bool,
-}
-
-
-
 #[derive(Clap, Clone)]
 #[clap(about = r"
 Generate addresses from a Coldcard's xpub.

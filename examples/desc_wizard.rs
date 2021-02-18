@@ -1,6 +1,5 @@
-use ::bitcoin::util::bip32::ExtendedPubKey;
-use anyhow::Result;
-use bdk::bitcoin;
+use anyhow::{Result, bail};
+use bdk::bitcoin::{self, util::bip32::ExtendedPubKey};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
 use slip132::FromSlip132;
 use std::str::FromStr;
@@ -22,16 +21,17 @@ fn main() -> Result<()> {
         .items(&network_selections[..])
         .interact()?;
     println!("");
-    let network: bitcoin::Network = bitcoin::Network::from_str(network_selections[network_choice])?;
+    let network = bitcoin::Network::from_str(network_selections[network_choice])?;
 
     // STEP 2: enter your extended public key 
-    let xpub: String = Input::with_theme(&theme)
-        .with_prompt("Enter your full extended public key with prefix (e.g. xpub123 / ypub123 / zpub123)"
+    let extended_public_key: String = Input::with_theme(&theme)
+        .with_prompt("Enter your full extended public key with prefix (e.g. xpub123 / ypub123 / zpub123)")
         .interact()?;
     println!("");
-    let actual_xpub = ExtendedPubKey::from_slip132_str(&xpub)?;
-    let xpub = actual_xpub.to_string();
-    let xpub_network = actual_xpub.network;
+    let xpub = ExtendedPubKey::from_slip132_str(&extended_public_key)?;
+    if xpub.network != network {
+        bail!("This extended public key doesn't match the network you selected.")
+    }
 
     // STEP 3: derivation path
     println!("A derivation looks something like m/84'/1'/0'");
@@ -40,6 +40,13 @@ fn main() -> Result<()> {
     let derivation_path: String = Input::with_theme(&theme)
         .with_prompt("Enter the derivation path")
         .interact()?;
+    // Parse it to check that it's valid 
+    let derivation_path = bitcoin::util::bip32::DerivationPath::from_str(&derivation_path)?;
+    // Count the children to make sure it includes the account 
+    // TODO: handle weirder wallets where we don't have the account
+    if derivation_path.len() != 3 {
+        bail!("That derivation path doesn't have the correct length.") 
+    }
     println!("");
 
     // STEP 4: fingerprint 
@@ -56,8 +63,7 @@ fn main() -> Result<()> {
             .interact()?;
         fingerprint
     } else {
-        let fingy = actual_xpub.parent_fingerprint.to_string();
-        dbg!(fingy.clone());
+        let fingy = xpub.parent_fingerprint.to_string();
         fingy
     };
     println!("");

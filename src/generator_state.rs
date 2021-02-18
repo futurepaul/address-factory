@@ -1,7 +1,7 @@
 use std::{fs::{self, File}, path::PathBuf};
 
 use anyhow::{bail, anyhow, Result};
-use bdk::{Wallet, bitcoin::{self, Address}, database::MemoryDatabase, descriptor::{ExtendedDescriptor, KeyMap, ToWalletDescriptor}};
+use bdk::{Wallet, bitcoin::{self, Address, secp256k1::Secp256k1}, database::MemoryDatabase, descriptor::{ExtendedDescriptor, IntoWalletDescriptor, KeyMap}};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -63,7 +63,8 @@ pub fn check_first_address(&self, wallet: &Wallet<(), MemoryDatabase>) -> Result
         &self,
         network: bitcoin::Network,
     ) -> Result<(ExtendedDescriptor, KeyMap)> {
-        match self.descriptor.to_wallet_descriptor(network) {
+        let secp = Secp256k1::new();
+        match self.descriptor.into_wallet_descriptor(&secp, network) {
             Ok(descriptor_pair) => Ok(descriptor_pair),
             Err(e) => Err(anyhow!("{}", e)),
         }
