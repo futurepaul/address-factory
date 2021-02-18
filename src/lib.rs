@@ -1,11 +1,12 @@
 mod coldcard;
 mod database;
+mod factory_state;
 mod gpg;
-mod generator_state;
-mod generic;
+pub mod util;
+pub mod wizard_steps;
 
 pub use coldcard::ColdcardJson;
 pub use database::{Database, Entry};
+pub use factory_state::Factory;
 pub use gpg::gpg_clearsign;
-pub use generator_state::GeneratorState;
-pub use generic::GenericXpub;
+pub use util::Desc;
