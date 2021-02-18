@@ -1,4 +1,6 @@
 /target
 coldcard-export.json
+bitcoin-core.txt
 test.txt
 *.db
+signed-address-generator-state.json

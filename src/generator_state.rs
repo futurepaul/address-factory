@@ -1,7 +1,7 @@
 use std::{fs::{self, File}, path::PathBuf};
 
 use anyhow::{bail, anyhow, Result};
-use bdk::{Wallet, bitcoin::{self, Address}, database::MemoryDatabase, descriptor::{ExtendedDescriptor, KeyMap, ToWalletDescriptor}};
+use bdk::{Wallet, bitcoin::{self, Address, secp256k1::Secp256k1}, database::MemoryDatabase, descriptor::{ExtendedDescriptor, IntoWalletDescriptor, KeyMap}};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -15,7 +15,7 @@ pub struct GeneratorState {
 }
 
 impl GeneratorState {
-    // Create a .json containing all the information necessary to derive more addresses
+    /// Create a struct containing all the information necessary to derive more addresses
     pub fn new(descriptor: String, next_index: u64, number_to_generate: u64, next_address: String, message: String) -> Self {
         Self {
             descriptor,
@@ -26,7 +26,7 @@ impl GeneratorState {
         }
     }
 
-    // Get path to .json from user
+    /// Get path to .json from user
     pub fn from_path(path: PathBuf) -> Result<Self> {
         let state_json = fs::read_to_string(path)?;
         let gen_state = serde_json::from_str(&state_json)?;
@@ -34,16 +34,16 @@ impl GeneratorState {
         Ok(gen_state)
     }
 
-    // Increment the next_index
+    /// Increment the next_index
     pub fn finish(&mut self, peek_next_address: String) {
         let old_next_index = self.next_index;
         self.next_index = old_next_index + self.number_to_generate; 
         self.next_address = peek_next_address;
     }
 
-    // Save the .json
+    /// Save the struct as .json
     pub fn save(&self) -> Result<()> {
-        let mut f = File::create("signed-address-generator-state.json")?;
+        let f = File::create("signed-address-generator-state.json")?;
         serde_json::to_writer_pretty(f, self)?;
         Ok(())
     }
@@ -63,7 +63,8 @@ pub fn check_first_address(&self, wallet: &Wallet<(), MemoryDatabase>) -> Result
         &self,
         network: bitcoin::Network,
     ) -> Result<(ExtendedDescriptor, KeyMap)> {
-        match self.descriptor.to_wallet_descriptor(network) {
+        let secp = Secp256k1::new();
+        match self.descriptor.into_wallet_descriptor(&secp, network) {
             Ok(descriptor_pair) => Ok(descriptor_pair),
             Err(e) => Err(anyhow!("{}", e)),
         }
