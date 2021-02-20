@@ -9,13 +9,13 @@ fn main() -> Result<()> {
             SubMode::Coldcard => {
                 let network = select_network()?;
                 let descriptor = new_coldcard(network)?;
-                new_factory(descriptor, network)
+                new_factory(descriptor, network, 0, 1000)
             }
             SubMode::Generic => {
                 let network = select_network()?;
                 let descriptor = new_generic(network)?;
                 check_first_address(descriptor.clone(), network)?;
-                new_factory(descriptor, network)
+                new_factory(descriptor, network, 0, 1000)
             }
         },
         Mode::Continue => load_and_edit_factory(),

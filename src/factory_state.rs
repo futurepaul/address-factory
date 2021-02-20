@@ -1,7 +1,4 @@
-use std::{
-    fs::{self, File},
-    path::PathBuf,
-};
+use std::{fmt, fs::{self, File}, path::PathBuf};
 
 use anyhow::Result;
 use bdk::{
@@ -17,13 +14,24 @@ use crate::{gpg_clearsign, util, util::Desc, Database, Entry};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Factory {
-    // TODO: could this be more strongly typed?
-    descriptor: String,
+    pub descriptor: Desc,
     pub next_index: u64,
     pub number_to_generate: u64,
     pub next_address: Address,
     pub message: String,
     pub network: bitcoin::Network,
+}
+
+impl fmt::Display for Factory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Descriptor: {}", self.descriptor)?;
+        writeln!(f, "Next index: {}", self.next_index)?;
+        writeln!(f, "Number to generate: {}", self.number_to_generate)?;
+        writeln!(f, "Next address: {}", self.next_address)?;
+        writeln!(f, "Message: {}", self.message)?;
+        write!(f, "Network: {}", self.network)
+    }
+
 }
 
 impl Factory {
@@ -38,22 +46,16 @@ impl Factory {
         let secp = Secp256k1::new();
         let (desc, _) = ExtendedDescriptor::parse_descriptor(&secp, &descriptor)?;
 
-        let next_address = util::nth_address(desc, network, next_index)?;
+        let next_address = util::nth_address(desc.clone(), network, next_index)?;
 
         Ok(Self {
-            descriptor,
+            descriptor: desc,
             next_index,
             number_to_generate,
             next_address,
             message,
             network,
         })
-    }
-
-    pub fn descriptor(&self) -> Result<Desc> {
-        let secp = Secp256k1::new();
-        let (desc, _) = ExtendedDescriptor::parse_descriptor(&secp, &self.descriptor.clone())?;
-        Ok(desc)
     }
 
     /// Get path to .json from user
@@ -81,7 +83,7 @@ impl Factory {
     /// Check that first address derived matches given address
     pub fn check_next_address(&self) -> Result<Address> {
         util::check_address(
-            self.descriptor()?,
+            self.descriptor.clone(),
             self.network,
             self.next_address.clone(),
             self.next_index,
@@ -90,7 +92,7 @@ impl Factory {
 
     pub fn generate_addresses(&mut self) -> Result<()> {
         self.check_next_address()?;
-        let desc = self.descriptor()?;
+        let desc = self.descriptor.clone();
 
         let wallet = Wallet::new_offline(desc, None, self.network, MemoryDatabase::default())?;
 

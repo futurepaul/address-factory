@@ -1,4 +1,4 @@
-use std::{fs, str::FromStr};
+use std::{fs::{self, File}, str::FromStr};
 
 use anyhow::{bail, Result};
 use bdk::bitcoin::{self, util::bip32::ExtendedPubKey, Address, Network};
@@ -22,7 +22,7 @@ pub enum SubMode {
 ///     If Continue, Jump to 6
 pub fn select_mode() -> Result<Mode> {
     let theme = ColorfulTheme::default();
-    println!("Do you want to create a New address factory or Continue an existing one?");
+    println!("Do you want to create a new address-factory.json or continue an existing one?");
     let modes = &["New", "Continue"];
     let mode_choice = Select::with_theme(&theme)
         .with_prompt("Mode")
@@ -30,6 +30,10 @@ pub fn select_mode() -> Result<Mode> {
         .items(&modes[..])
         .interact()?;
     println!("");
+
+    if File::open("address-factory.json").is_ok() && mode_choice == 0 {
+        bail!("An address-factory.json already exists in this folder!")
+    }
 
     // If "New"
     if mode_choice == 0 {
@@ -144,17 +148,20 @@ pub fn check_first_address(descriptor: Desc, network: Network) -> Result<Address
 }
 
 /// 5. Ask how many addresses to generate, what index to start from & message to sign -> Generate address-factory.json
-pub fn new_factory(descriptor: Desc, network: Network) -> Result<Factory> {
+pub fn new_factory(descriptor: Desc, network: Network, next_index: u64, number_to_generate: u64) -> Result<Factory> {
     let theme = ColorfulTheme::default();
     println!("How many addresses you want to generate?");
     let number_to_generate: u64 = Input::with_theme(&theme)
         .with_prompt("Number to generate")
+        .default(number_to_generate)
+        .show_default(true)
         .interact()?;
     println!("");
 
     println!("How many addresses to skip (because you've used them before)");
     let skip_num: u64 = Input::with_theme(&theme)
         .with_prompt("Number to skip")
+        .default(next_index).show_default(true)
         .interact()?;
     println!("");
 
@@ -185,7 +192,7 @@ pub fn load_and_edit_factory() -> Result<Factory> {
 
     let mut factory = Factory::from_path(path.into())?;
 
-    println!("{:?}", factory);
+    println!("{}", factory);
     println!("");
 
     // TODO: if they put in the wrong skip_num I think the index will get screwed up?
@@ -193,7 +200,7 @@ pub fn load_and_edit_factory() -> Result<Factory> {
         .with_prompt("Do you want to make any changes?")
         .interact()?
     {
-        factory = new_factory(factory.descriptor()?, factory.network)?
+        factory = new_factory(factory.descriptor, factory.network, factory.next_index, factory.number_to_generate)?
     }
 
     Ok(factory)

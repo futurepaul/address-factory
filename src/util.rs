@@ -117,9 +117,8 @@ mod tests {
             ExtendedPubKey::from_slip132_str(&extended_public_key).expect("Failed to make an xpub");
         let derivation_path = bitcoin::util::bip32::DerivationPath::from_str(path)
             .expect("Failed to make a derivation path");
-        let fingy = xpub.parent_fingerprint.to_string();
 
-        let descriptor = build_descriptor(xpub, derivation_path, &fingy);
+        let descriptor = build_descriptor(xpub, derivation_path);
 
         super::check_address(
             descriptor?,
