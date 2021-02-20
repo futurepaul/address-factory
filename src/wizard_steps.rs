@@ -86,7 +86,7 @@ pub fn new_coldcard(network: Network) -> Result<Desc> {
     // Regardless of the start index this must be checked
     let next_address = parsed_coldcard.get_first_addresss()?;
 
-    let address = util::check_address(desc.clone(), network, next_address, 0)?;
+    util::check_address(desc.clone(), network, next_address, 0)?;
 
     Ok(desc)
 }
@@ -123,26 +123,7 @@ pub fn new_generic(network: Network) -> Result<Desc> {
     }
     println!("");
 
-    // STEP 3: fingerprint
-    // TODO: is it okay for this to be optional?
-    let has_fingerprint = Confirm::with_theme(&theme)
-        .with_prompt("Do you know your wallet's parent fingerprint?")
-        .default(true)
-        .interact()?;
-
-    let fingerprint = if has_fingerprint {
-        println!("Some information about fingerprints...");
-        let fingerprint: String = Input::with_theme(&theme)
-            .with_prompt("Enter your wallet fingerprint")
-            .interact()?;
-        fingerprint
-    } else {
-        let fingy = xpub.parent_fingerprint.to_string();
-        fingy
-    };
-    println!("");
-
-    let descriptor = build_descriptor(xpub, derivation_path, &fingerprint)?;
+    let descriptor = build_descriptor(xpub, derivation_path)?;
 
     Ok(descriptor)
 }

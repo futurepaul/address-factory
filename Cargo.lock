@@ -76,8 +76,9 @@ dependencies = [
 
 [[package]]
 name = "bdk"
-version = "0.3.1-dev"
-source = "git+https://github.com/bitcoindevkit/bdk/#fa5a5c8c05f18836a8c3551c2261b171dda26fa6"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "daeccaea73c9fc27e218e2a4402070707fb8354afd30fecd4a1c9a0bea8b79c4"
 dependencies = [
  "async-trait",
  "bdk-macros",
@@ -95,8 +96,9 @@ dependencies = [
 
 [[package]]
 name = "bdk-macros"
-version = "0.2.0"
-source = "git+https://github.com/bitcoindevkit/bdk/#fa5a5c8c05f18836a8c3551c2261b171dda26fa6"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b96757dbe9c7e0a8f0635c5366464d9c713528e111f47490e96385f70d6a67a6"
 dependencies = [
  "proc-macro2",
  "quote",

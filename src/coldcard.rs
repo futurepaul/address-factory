@@ -39,7 +39,7 @@ impl ColdcardJson {
         let derivation_path = DerivationPath::from_str(&self.bip84.deriv)?;
         let xpub = ExtendedPubKey::from_str(&self.bip84.xpub)?;
 
-        util::build_descriptor(xpub, derivation_path, &self.xfp)
+        util::build_descriptor(xpub, derivation_path)
     }
 
     pub fn get_first_addresss(&self) -> Result<Address> {

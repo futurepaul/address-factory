@@ -1,12 +1,11 @@
 use anyhow::{bail, Context, Result};
 use bdk::{
     bitcoin::{
-        secp256k1::Secp256k1,
         util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey},
         Address, Network,
     },
     database::MemoryDatabase,
-    descriptor::{Descriptor, ExtendedDescriptor},
+    descriptor::Descriptor,
     miniscript::DescriptorPublicKey,
     Wallet,
 };
@@ -80,37 +79,23 @@ pub fn script_type(path: &DerivationPath) -> Result<ScriptType> {
 pub fn build_descriptor(
     xpub: ExtendedPubKey,
     derivation_path: DerivationPath,
-    fingerprint: &str,
 ) -> Result<Descriptor<DescriptorPublicKey>> {
-    // m / purpose' / coin_type' / account' / change / index
-    // TODO: if network is regtest or testnet, make sure coin_type is 1
-
-    let derivation_path_string = derivation_path
-        .to_string()
-        .replace("m", &fingerprint.trim().to_lowercase());
-
-    let descriptor_part = format!("[{}]{}", derivation_path_string, xpub);
-
-    let is_change = false;
-
-    let inner = format!("{}/{}/*", descriptor_part, is_change as u32);
-
     let script_type = script_type(&derivation_path)?;
 
-    let descriptor = match script_type {
+    // Change step of the derivation path
+    let derivation_path = vec![ChildNumber::Normal { index: 0 }].into();
+
+    let (desc, _, _) = match script_type {
         ScriptType::Classic => {
-            format!("pkh({})", inner)
+            bdk::descriptor!(pkh((xpub, derivation_path)))
         }
         ScriptType::NativeSegwit => {
-            format!("wpkh({})", inner)
+            bdk::descriptor!(wpkh((xpub, derivation_path)))
         }
         ScriptType::WrappedSegwit => {
-            format!("sh(wpkh({}))", inner)
+            bdk::descriptor!(sh(wpkh((xpub, derivation_path))))
         }
-    };
-
-    let secp = Secp256k1::new();
-    let (desc, _keys) = ExtendedDescriptor::parse_descriptor(&secp, &descriptor.clone())?;
+    }?;
 
     Ok(desc)
 }
