@@ -30,20 +30,24 @@ impl Factory {
     /// Create a struct containing all the information necessary to derive more addresses
     pub fn new(
         descriptor: String,
-        next_address: Address,
         network: bitcoin::Network,
         next_index: u64,
         number_to_generate: u64,
         message: String,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        let secp = Secp256k1::new();
+        let (desc, _) = ExtendedDescriptor::parse_descriptor(&secp, &descriptor)?;
+
+        let next_address = util::nth_address(desc, network, next_index)?;
+
+        Ok(Self {
             descriptor,
             next_index,
             number_to_generate,
             next_address,
             message,
             network,
-        }
+        })
     }
 
     pub fn descriptor(&self) -> Result<Desc> {

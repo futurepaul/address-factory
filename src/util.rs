@@ -19,11 +19,9 @@ pub enum ScriptType {
     WrappedSegwit,
 }
 
-/// Check that first address derived matches given address
-pub fn check_address(
+pub fn nth_address(
     descriptor: Descriptor<DescriptorPublicKey>,
     network: Network,
-    address: Address,
     index: u64,
 ) -> Result<Address> {
     let wallet = Wallet::new_offline(descriptor, None, network, MemoryDatabase::default())?;
@@ -37,6 +35,18 @@ pub fn check_address(
     }
 
     let next_address = wallet.get_new_address()?;
+
+    Ok(next_address)
+}
+
+/// Check that first address derived matches given address
+pub fn check_address(
+    descriptor: Descriptor<DescriptorPublicKey>,
+    network: Network,
+    address: Address,
+    index: u64,
+) -> Result<Address> {
+    let next_address = nth_address(descriptor, network, index)?;
 
     println!(
         "Checking address\nDerived:  {}\nExpected: {}",

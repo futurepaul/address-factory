@@ -72,7 +72,7 @@ pub fn select_network() -> Result<Network> {
 }
 
 /// 2. If New ColdCard, ask user to select colcard-export.json. Load these parameters into memory and go to 4
-pub fn new_coldcard(network: Network) -> Result<(Desc, Address)> {
+pub fn new_coldcard(network: Network) -> Result<Desc> {
     let theme = ColorfulTheme::default();
     let path: String = Input::with_theme(&theme)
         .with_prompt("PATH/TO/coldcard-export.json")
@@ -88,7 +88,7 @@ pub fn new_coldcard(network: Network) -> Result<(Desc, Address)> {
 
     let address = util::check_address(desc.clone(), network, next_address, 0)?;
 
-    Ok((desc, address))
+    Ok(desc)
 }
 
 /// 3. If New Generic, ask user for xpub, derivation path, fingerprint & first address. Load these parameters into memory and validate
@@ -147,8 +147,8 @@ pub fn new_generic(network: Network) -> Result<Desc> {
     Ok(descriptor)
 }
 
-/// 4. Check that the derived first address matches the expected first address. If yes, go to 5. If no, error message.
-pub fn validate_descriptor(descriptor: Desc, network: Network) -> Result<Address> {
+/// 4. Check that the first address matches
+pub fn check_first_address(descriptor: Desc, network: Network) -> Result<Address> {
     let theme = ColorfulTheme::default();
     // TODO: Enter 'any' address and we scan the first 10000 for a match
     println!("Enter this wallet's first address to make sure everything is correct");
@@ -163,7 +163,7 @@ pub fn validate_descriptor(descriptor: Desc, network: Network) -> Result<Address
 }
 
 /// 5. Ask how many addresses to generate, what index to start from & message to sign -> Generate address-factory.json
-pub fn new_factory(descriptor: Desc, network: Network, address: Address) -> Result<Factory> {
+pub fn new_factory(descriptor: Desc, network: Network) -> Result<Factory> {
     let theme = ColorfulTheme::default();
     println!("How many addresses you want to generate?");
     let number_to_generate: u64 = Input::with_theme(&theme)
@@ -185,12 +185,11 @@ pub fn new_factory(descriptor: Desc, network: Network, address: Address) -> Resu
 
     let factory = Factory::new(
         descriptor.to_string(),
-        address,
         network,
         skip_num,
         number_to_generate,
         message,
-    );
+    )?;
 
     Ok(factory)
 }
@@ -213,7 +212,7 @@ pub fn load_and_edit_factory() -> Result<Factory> {
         .with_prompt("Do you want to make any changes?")
         .interact()?
     {
-        factory = new_factory(factory.descriptor()?, factory.network, factory.next_address)?
+        factory = new_factory(factory.descriptor()?, factory.network)?
     }
 
     Ok(factory)
