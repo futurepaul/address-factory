@@ -82,7 +82,7 @@ pub fn new_coldcard(network: Network) -> Result<Desc> {
         .with_prompt("PATH/TO/coldcard-export.json")
         .interact()?;
 
-    let path = PathBuf::from(path.trim_matches('\'').trim());
+    let path = PathBuf::from(path.trim().trim_matches('\''));
 
     let wallet_json = fs::read_to_string(path)?;
     let parsed_coldcard = ColdcardJson::from_str(&wallet_json)?;
@@ -192,7 +192,7 @@ pub fn load_and_edit_factory() -> Result<Factory> {
         .with_prompt("PATH/TO/address-factory.json")
         .interact()?;
 
-    let path = PathBuf::from(path.trim_matches('\'').trim());
+    let path = PathBuf::from(path.trim().trim_matches('\''));
 
     let mut factory = Factory::from_path(path.into())?;
 
