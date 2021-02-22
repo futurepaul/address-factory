@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, str::FromStr};
+use std::{fs::{self, File}, path::PathBuf, str::FromStr};
 
 use anyhow::{bail, Result};
 use bdk::bitcoin::{self, util::bip32::ExtendedPubKey, Address, Network};
@@ -81,6 +81,8 @@ pub fn new_coldcard(network: Network) -> Result<Desc> {
     let path: String = Input::with_theme(&theme)
         .with_prompt("PATH/TO/coldcard-export.json")
         .interact()?;
+
+    let path = PathBuf::from(path.trim_matches('\'').trim());
 
     let wallet_json = fs::read_to_string(path)?;
     let parsed_coldcard = ColdcardJson::from_str(&wallet_json)?;
@@ -189,6 +191,8 @@ pub fn load_and_edit_factory() -> Result<Factory> {
     let path: String = Input::with_theme(&theme)
         .with_prompt("PATH/TO/address-factory.json")
         .interact()?;
+
+    let path = PathBuf::from(path.trim_matches('\'').trim());
 
     let mut factory = Factory::from_path(path.into())?;
 
