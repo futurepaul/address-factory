@@ -1,4 +1,8 @@
-use std::{fmt, fs::{self, File}, path::PathBuf};
+use std::{
+    fmt,
+    fs::{self, File},
+    path::PathBuf,
+};
 
 use anyhow::Result;
 use bdk::{
@@ -20,6 +24,7 @@ pub struct Factory {
     pub next_address: Address,
     pub message: String,
     pub network: bitcoin::Network,
+    pub config_dir: PathBuf,
 }
 
 impl fmt::Display for Factory {
@@ -31,7 +36,6 @@ impl fmt::Display for Factory {
         writeln!(f, "Message: {}", self.message)?;
         write!(f, "Network: {}", self.network)
     }
-
 }
 
 impl Factory {
@@ -42,6 +46,7 @@ impl Factory {
         next_index: u64,
         number_to_generate: u64,
         message: String,
+        config_dir: PathBuf,
     ) -> Result<Self> {
         let secp = Secp256k1::new();
         let (desc, _) = ExtendedDescriptor::parse_descriptor(&secp, &descriptor)?;
@@ -55,10 +60,11 @@ impl Factory {
             next_address,
             message,
             network,
+            config_dir,
         })
     }
 
-    /// Get path to .json from user
+    /// Load address-factory.json
     pub fn from_path(path: PathBuf) -> Result<Self> {
         let state_json = fs::read_to_string(path)?;
         let gen_state = serde_json::from_str(&state_json)?;
@@ -75,7 +81,9 @@ impl Factory {
 
     /// Save the struct as .json
     pub fn save(&self) -> Result<()> {
-        let f = File::create("address-factory.json")?;
+        fs::create_dir_all(self.config_dir.clone())?;
+        let config_file_path = self.config_dir.join("address-factory.json");
+        let f = File::create(config_file_path)?;
         serde_json::to_writer_pretty(f, self)?;
         Ok(())
     }
@@ -157,8 +165,12 @@ impl Factory {
         );
 
         println!(
-            "Saved this setup to address-factory.json.\nUse that file next time to pick up where you left off."
+            "Saved this setup to {}",
+            self.config_dir
+                .join("address-factory.json")
+                .to_string_lossy()
         );
+        println!("We'll use that file next time to pick up where you left off.",);
 
         Ok(())
     }
