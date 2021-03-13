@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::str::FromStr;
 
 use bdk::bitcoin::{
+    Network,
     util::bip32::{DerivationPath, ExtendedPubKey},
     Address,
 };
@@ -21,7 +22,7 @@ pub struct Bip84Json {
 
 #[derive(Debug, Deserialize)]
 pub struct ColdcardJson {
-    chain: String,
+    pub chain: String,
     pub xfp: String,
     xpub: String,
     // TODO: use the account, yes?
@@ -31,8 +32,19 @@ pub struct ColdcardJson {
 }
 
 impl ColdcardJson {
+    pub fn get_network(&self) -> Result<Network> {
+        // TODO: figure out what coldcard's regest and signet flags are
+        let network = match &self.chain[..] {
+            "XTN" => Network::Testnet,
+            "BTC" => Network::Bitcoin,
+            _ => panic!("Didn't expect that network")
+        };
+
+        Ok(network)
+    }
+
     pub fn build_descriptor_string(&self) -> Result<Desc> {
-        if &self.chain != "XTN" {
+        if self.get_network()? != Network::Testnet {
             panic!("We only support tpub right now")
         }
 

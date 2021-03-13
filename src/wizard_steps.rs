@@ -75,18 +75,20 @@ pub fn select_network() -> Result<Network> {
     Ok(network)
 }
 
-/// 2. If New ColdCard, ask user to select colcard-export.json. Load these parameters into memory and go to 4
-pub fn new_coldcard(network: Network) -> Result<Desc> {
-    let theme = ColorfulTheme::default();
-    let path: String = Input::with_theme(&theme)
-        .with_prompt("PATH/TO/coldcard-export.json")
-        .interact()?;
+/// 2. If New ColdCard, ask user to re-run address-factory with coldcard-export.json as an argument.
+pub fn new_coldcard_instruction() {
+    println!("To use a ColdCard, re-run Address Factory with a coldcard-export.json file as an argument:");
+    println!("address-factory PATH/TO/coldcard-export.json");
+}
 
-    let path = PathBuf::from(path.trim().trim_matches('\''));
+/// 2. If New ColdCard, ask user to re-run address-factory with coldcard-export.json as an argument. Load these parameters into memory and go to 4
+pub fn new_coldcard_from_file(path: &PathBuf) -> Result<(Desc, Network)> {
+    // let path = PathBuf::from(path.trim().trim_matches('\''));
 
     let wallet_json = fs::read_to_string(path)?;
     let parsed_coldcard = ColdcardJson::from_str(&wallet_json)?;
     let desc = parsed_coldcard.build_descriptor_string()?;
+    let network = parsed_coldcard.get_network()?;
 
     // TODO: this only makes sense when we're starting from zero yeah?
     // Regardless of the start index this must be checked
@@ -94,7 +96,7 @@ pub fn new_coldcard(network: Network) -> Result<Desc> {
 
     util::check_address(desc.clone(), network, next_address, 0)?;
 
-    Ok(desc)
+    Ok((desc, network))
 }
 
 /// 3. If New Generic, ask user for xpub, derivation path, fingerprint & first address. Load these parameters into memory and validate

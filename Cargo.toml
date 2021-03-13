@@ -1,5 +1,5 @@
 [package]
-name = "signed-address-generator"
+name = "address-factory"
 version = "0.1.0"
 authors = ["Paul Miller <paul@pauljmiller.com>"]
 license = "MIT OR Apache-2.0"
