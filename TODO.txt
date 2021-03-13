@@ -1,0 +1,14 @@
+[x] pretty print the address-factory.json
+[ ] (hopefully) do path tab complete
+[x] ask the bdk people how to skip to a specific index
+[x] make a suggestion of number to skip based on current factory state
+[ ] if I ctrl-c to cancel clean up after myself?? do I revert the factory state???
+[x] use bdk's macro thing to build descriptor
+[x] if I set it to skip addresses during setup when it validates derived vs expected it doesn't do the skipping
+[x] if I already have an address factory file at that path do I overwrite it? error out? write it with a diff name?
+[ ] is there a better resource to point to for derivation path?
+[x] can I use serde to serialize desc?
+[ ] if pr gets accepted nice
+[ ] probably don't even ask for fingerprint
+[ ] make 44 / 49 / 84 a selection instead of needing the whole path OR ACTUALLY if it's a ypub / zpub / xpub we should be able to do it automatically
+[ ] if you do two runs in the same minute it's an error because the filename for the db is a dupe
