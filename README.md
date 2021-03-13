@@ -1,4 +1,4 @@
-# Signed address generator
+# Address Factory 
 
 This is a tool to generate a ton of addresses from an xpub. The idea is you generate the addresses in a batch, then put that stack of addresses on a server somewhere for receiving payments. This way your xpub itself doesn't have to be on the server.
 
@@ -10,7 +10,8 @@ Advanced > MicroSD Card > Export Wallet > Generic JSON
 
 ## TODO
 
-- [ ] come up with a better name
+- [x] come up with a better name
 - [x] sign the addresses with gpg
 - [x] write the signed addresses to an sqlite db
-- [ ] parse non-coldcard xpubs 
+- [x] parse non-coldcard xpubs 
+- [ ] fix all the obvious usability issues
