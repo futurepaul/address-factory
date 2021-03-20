@@ -1,64 +1,41 @@
-use std::{fs::{self, File}, path::PathBuf, str::FromStr};
+use std::{
+    fs,
+    path::PathBuf,
+    str::FromStr,
+};
 
 use anyhow::{bail, Result};
 use bdk::bitcoin::{self, util::bip32::ExtendedPubKey, Address, Network};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
 use slip132::FromSlip132;
 
-use crate::{ColdcardJson, Desc, Factory, util, util::build_descriptor};
+use crate::{util, util::build_descriptor, ColdcardJson, Desc, Factory};
 
 pub enum Mode {
-    New(SubMode),
-    Continue,
-}
-
-pub enum SubMode {
     Coldcard,
     Generic,
 }
 
-/// 1. Ask user to Select Mode (New or Continue)
-///     If New, Ask whether using ColdCard or Generic
-///     If Continue, Jump to 6
+/// Ask whether using ColdCard or Generic
 pub fn select_mode() -> Result<Mode> {
     let theme = ColorfulTheme::default();
-    println!("Do you want to create a new address-factory.json or continue an existing one?");
-    let modes = &["New", "Continue"];
+    println!("Do you have a coldcard-export.json file to import, or do you want to import a generic extended public key?");
+    let modes = &["Coldcard", "Generic"];
     let mode_choice = Select::with_theme(&theme)
-        .with_prompt("Mode")
+        .with_prompt("Import type")
         .default(0)
         .items(&modes[..])
         .interact()?;
     println!("");
 
-    if File::open("address-factory.json").is_ok() && mode_choice == 0 {
-        bail!("An address-factory.json already exists in this folder!")
-    }
-
-    // If "New"
     if mode_choice == 0 {
-        println!("Do you have a coldcard-export.json file to import, or do you want to import a generic extended public key?");
-        let submodes = &["Coldcard", "Generic"];
-        let submode_choice = Select::with_theme(&theme)
-            .with_prompt("Import type")
-            .default(0)
-            .items(&submodes[..])
-            .interact()?;
-        println!("");
-
-        if submode_choice == 0 {
-            Ok(Mode::New(SubMode::Coldcard))
-        } else {
-            Ok(Mode::New(SubMode::Generic))
-        }
-
-    // Otherwise "Continue"
+        Ok(Mode::Coldcard)
     } else {
-        Ok(Mode::Continue)
+        Ok(Mode::Generic)
     }
 }
 
-/// 1a. Select Network
+/// Select Network
 pub fn select_network() -> Result<Network> {
     let theme = ColorfulTheme::default();
 
@@ -75,16 +52,14 @@ pub fn select_network() -> Result<Network> {
     Ok(network)
 }
 
-/// 2. If New ColdCard, ask user to re-run address-factory with coldcard-export.json as an argument.
+/// If New ColdCard, ask user to re-run address-factory with coldcard-export.json as an argument.
 pub fn new_coldcard_instruction() {
     println!("To use a ColdCard, re-run Address Factory with a coldcard-export.json file as an argument:");
     println!("address-factory PATH/TO/coldcard-export.json");
 }
 
-/// 2. If New ColdCard, ask user to re-run address-factory with coldcard-export.json as an argument. Load these parameters into memory and go to 4
+/// Load and parse coldcard-export.json
 pub fn new_coldcard_from_file(path: &PathBuf) -> Result<(Desc, Network)> {
-    // let path = PathBuf::from(path.trim().trim_matches('\''));
-
     let wallet_json = fs::read_to_string(path)?;
     let parsed_coldcard = ColdcardJson::from_str(&wallet_json)?;
     let desc = parsed_coldcard.build_descriptor_string()?;
@@ -99,7 +74,7 @@ pub fn new_coldcard_from_file(path: &PathBuf) -> Result<(Desc, Network)> {
     Ok((desc, network))
 }
 
-/// 3. If New Generic, ask user for xpub, derivation path, fingerprint & first address. Load these parameters into memory and validate
+/// If New Generic, ask user for xpub, derivation path, fingerprint & first address. Load these parameters into memory and validate
 pub fn new_generic(network: Network) -> Result<Desc> {
     let theme = ColorfulTheme::default();
 
@@ -136,7 +111,7 @@ pub fn new_generic(network: Network) -> Result<Desc> {
     Ok(descriptor)
 }
 
-/// 4. Check that the first address matches
+/// Check that the first address matches
 pub fn check_first_address(descriptor: Desc, network: Network) -> Result<Address> {
     let theme = ColorfulTheme::default();
     // TODO: Enter 'any' address and we scan the first 10000 for a match
@@ -151,8 +126,14 @@ pub fn check_first_address(descriptor: Desc, network: Network) -> Result<Address
     util::check_address(descriptor, network, address, 0)
 }
 
-/// 5. Ask how many addresses to generate, what index to start from & message to sign -> Generate address-factory.json
-pub fn new_factory(descriptor: Desc, network: Network, next_index: u64, number_to_generate: u64) -> Result<Factory> {
+/// Ask how many addresses to generate, what index to start from & message to sign 
+pub fn new_factory(
+    descriptor: Desc,
+    network: Network,
+    next_index: u64,
+    number_to_generate: u64,
+    config_dir: PathBuf,
+) -> Result<Factory> {
     let theme = ColorfulTheme::default();
     println!("How many addresses you want to generate?");
     let number_to_generate: u64 = Input::with_theme(&theme)
@@ -165,7 +146,8 @@ pub fn new_factory(descriptor: Desc, network: Network, next_index: u64, number_t
     println!("How many addresses to skip (because you've used them before)");
     let skip_num: u64 = Input::with_theme(&theme)
         .with_prompt("Number to skip")
-        .default(next_index).show_default(true)
+        .default(next_index)
+        .show_default(true)
         .interact()?;
     println!("");
 
@@ -181,22 +163,17 @@ pub fn new_factory(descriptor: Desc, network: Network, next_index: u64, number_t
         skip_num,
         number_to_generate,
         message,
+        config_dir,
     )?;
 
     Ok(factory)
 }
 
-/// 6. Load address-factory.json into memory and display key info, 
-/// allow user to edit (jumps to 5) or proceed
-pub fn load_and_edit_factory() -> Result<Factory> {
+/// Load address-factory.json into memory and display key info, allow user to edit or proceed
+pub fn load_and_edit_factory(path_to_config: PathBuf) -> Result<Factory> {
     let theme = ColorfulTheme::default();
-    let path: String = Input::with_theme(&theme)
-        .with_prompt("PATH/TO/address-factory.json")
-        .interact()?;
 
-    let path = PathBuf::from(path.trim().trim_matches('\''));
-
-    let mut factory = Factory::from_path(path.into())?;
+    let mut factory = Factory::from_path(path_to_config.clone())?;
 
     println!("{}", factory);
     println!("");
@@ -206,13 +183,19 @@ pub fn load_and_edit_factory() -> Result<Factory> {
         .with_prompt("Do you want to make any changes?")
         .interact()?
     {
-        factory = new_factory(factory.descriptor, factory.network, factory.next_index, factory.number_to_generate)?
+        factory = new_factory(
+            factory.descriptor,
+            factory.network,
+            factory.next_index,
+            factory.number_to_generate,
+            path_to_config.parent().unwrap().to_path_buf(),
+        )?
     }
 
     Ok(factory)
 }
 
-/// 7. Run program to generate addresses, sign them and put them into a database
+/// Run program to generate addresses, sign them and put them into a database
 pub fn execute(factory: &mut Factory) -> Result<()> {
     factory.generate_addresses()?;
     Ok(())
