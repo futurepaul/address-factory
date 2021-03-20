@@ -7,6 +7,7 @@ use bdk::{
     database::MemoryDatabase,
     descriptor::Descriptor,
     miniscript::DescriptorPublicKey,
+    wallet::AddressIndex,
     Wallet,
 };
 
@@ -21,21 +22,12 @@ pub enum ScriptType {
 pub fn nth_address(
     descriptor: Descriptor<DescriptorPublicKey>,
     network: Network,
-    index: u64,
+    index: u32,
 ) -> Result<Address> {
     let wallet = Wallet::new_offline(descriptor, None, network, MemoryDatabase::default())?;
+    let address = wallet.get_address(AddressIndex::Peek(index))?;
 
-    // Skip all these addresses by asking for them
-    // TODO: find a better way to skip
-    if index > 0 {
-        for _i in 0..index {
-            wallet.get_new_address()?;
-        }
-    }
-
-    let next_address = wallet.get_new_address()?;
-
-    Ok(next_address)
+    Ok(address)
 }
 
 /// Check that first address derived matches given address
@@ -43,7 +35,7 @@ pub fn check_address(
     descriptor: Descriptor<DescriptorPublicKey>,
     network: Network,
     address: Address,
-    index: u64,
+    index: u32,
 ) -> Result<Address> {
     let next_address = nth_address(descriptor, network, index)?;
 
