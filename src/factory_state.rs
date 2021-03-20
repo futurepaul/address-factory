@@ -9,6 +9,7 @@ use bdk::{
     bitcoin::{self, secp256k1::Secp256k1, Address},
     database::MemoryDatabase,
     descriptor::ExtendedDescriptor,
+    wallet::AddressIndex,
     Wallet,
 };
 use indicatif::{ProgressBar, ProgressStyle};
@@ -19,8 +20,8 @@ use crate::{gpg_clearsign, util, util::Desc, Database, Entry};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Factory {
     pub descriptor: Desc,
-    pub next_index: u64,
-    pub number_to_generate: u64,
+    pub next_index: u32,
+    pub number_to_generate: u32,
     pub next_address: Address,
     pub message: String,
     pub network: bitcoin::Network,
@@ -43,8 +44,8 @@ impl Factory {
     pub fn new(
         descriptor: String,
         network: bitcoin::Network,
-        next_index: u64,
-        number_to_generate: u64,
+        next_index: u32,
+        number_to_generate: u32,
         message: String,
         config_dir: PathBuf,
     ) -> Result<Self> {
@@ -99,25 +100,23 @@ impl Factory {
     }
 
     pub fn generate_addresses(&mut self) -> Result<()> {
+        // This only peeks at the next address
         self.check_next_address()?;
         let desc = self.descriptor.clone();
 
         let wallet = Wallet::new_offline(desc, None, self.network, MemoryDatabase::default())?;
 
-        // Skip all these addresses by asking for them
-        // TODO: figure out how to just start from an index
         if self.next_index > 0 {
             println!("Skipping addresses...");
-            for _i in 0..self.next_index {
-                wallet.get_new_address()?;
-            }
+            // This mutates the wallet to be the index right before we want to begin
+            wallet.get_address(AddressIndex::Reset(self.next_index - 1))?;
         }
 
         // Create a new SQLite db file and connect to it
         let db = Database::new()?;
 
         // Don't want people staring at a blank prompt for minutes
-        let pb = ProgressBar::new(self.number_to_generate);
+        let pb = ProgressBar::new(self.number_to_generate as u64);
         pb.set_style(
             ProgressStyle::default_bar()
                 .template("[{elapsed}] [{bar:40.green}] {pos}/{len} (eta: {eta})")
@@ -129,7 +128,8 @@ impl Factory {
         println!("Generating addresses...");
 
         for _i in 0..self.number_to_generate {
-            let address = wallet.get_new_address()?;
+            // Each time we ask for a New address BDK advances the index by 1
+            let address = wallet.get_address(AddressIndex::New)?;
             addresses.push(address);
             pb.inc(1);
         }
@@ -140,7 +140,7 @@ impl Factory {
 
         // Would be nice to do this in parallel with rayon but gpg doesn't like that
         println!("PGP signing addresses...");
-        let pb = ProgressBar::new(self.number_to_generate);
+        let pb = ProgressBar::new(self.number_to_generate as u64);
         pb.set_style(
             ProgressStyle::default_bar()
                 .template("[{elapsed}] [{bar:40.green}] {pos}/{len} (eta: {eta})")
@@ -156,7 +156,7 @@ impl Factory {
 
         pb.finish();
 
-        self.finish(wallet.get_new_address()?);
+        self.finish(wallet.get_address(AddressIndex::New)?);
         self.save()?;
 
         println!(

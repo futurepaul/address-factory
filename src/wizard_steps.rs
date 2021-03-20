@@ -1,8 +1,4 @@
-use std::{
-    fs,
-    path::PathBuf,
-    str::FromStr,
-};
+use std::{fs, path::PathBuf, str::FromStr};
 
 use anyhow::{bail, Result};
 use bdk::bitcoin::{self, util::bip32::ExtendedPubKey, Address, Network};
@@ -126,17 +122,17 @@ pub fn check_first_address(descriptor: Desc, network: Network) -> Result<Address
     util::check_address(descriptor, network, address, 0)
 }
 
-/// Ask how many addresses to generate, what index to start from & message to sign 
+/// Ask how many addresses to generate, what index to start from & message to sign
 pub fn new_factory(
     descriptor: Desc,
     network: Network,
-    next_index: u64,
-    number_to_generate: u64,
+    next_index: u32,
+    number_to_generate: u32,
     config_dir: PathBuf,
 ) -> Result<Factory> {
     let theme = ColorfulTheme::default();
     println!("How many addresses you want to generate?");
-    let number_to_generate: u64 = Input::with_theme(&theme)
+    let number_to_generate: u32 = Input::with_theme(&theme)
         .with_prompt("Number to generate")
         .default(number_to_generate)
         .show_default(true)
@@ -144,7 +140,7 @@ pub fn new_factory(
     println!("");
 
     println!("How many addresses to skip (because you've used them before)");
-    let skip_num: u64 = Input::with_theme(&theme)
+    let skip_num: u32 = Input::with_theme(&theme)
         .with_prompt("Number to skip")
         .default(next_index)
         .show_default(true)
