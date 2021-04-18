@@ -10,7 +10,6 @@ use std::{
 };
 
 // TODO: Parallel sign
-// TODO: Give ETA
 // TODO: Option for user to cancel and retry with fewer addresses
 
 /// Pass the address you want signed along with a friendly message
@@ -22,14 +21,23 @@ pub fn gpg_clearsign(address: &str, message: &str) -> Result<String> {
         .arg("--clear-sign")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .spawn()?;
+        .spawn();
 
-    let str_to_sign = format!("{} {}", message, address);
+    match process {
+        Ok(process) => {
+            let str_to_sign = format!("{} {}", message, address);
 
-    process.stdin.unwrap().write_all(str_to_sign.as_bytes())?;
+            process.stdin.unwrap().write_all(str_to_sign.as_bytes())?;
 
-    let mut s = String::new();
-    process.stdout.unwrap().read_to_string(&mut s)?;
+            let mut s = String::new();
+            process.stdout.unwrap().read_to_string(&mut s)?;
 
-    Ok(s)
+            Ok(s)
+        }
+        Err(error) => {
+            eprintln!("{}", error);
+            eprintln!("Something went wrong with GPG");
+            Err(error.into())
+        }
+    }
 }

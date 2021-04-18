@@ -1,3 +1,4 @@
+use std::process::Command;
 use std::{
     fmt,
     fs::{self, File},
@@ -146,9 +147,23 @@ impl Factory {
                 .template("[{elapsed}] [{bar:40.green}] {pos}/{len} (eta: {eta})")
                 .progress_chars("#>-"),
         );
+
+        // Check if GPG exists
+        let test_gpg = Command::new("garblefake").arg("--list-secret-keys").spawn();
+
+        match test_gpg {
+            Ok(_) => {}
+            Err(error) => {
+                eprintln!("Something wrong with your GPG setup");
+                eprintln!("Here's a setup guide:");
+                eprintln!("https://medium.com/@acparas/gpg-quickstart-guide-d01f005ca99");
+                return Err(error.into());
+            }
+        }
+
         for address in addresses {
             let address = address.to_string();
-            let signed_message = gpg_clearsign(&address.to_string(), message_text).unwrap();
+            let signed_message = gpg_clearsign(&address.to_string(), message_text)?;
             pb.inc(1);
             let entry = Entry::new(&address, &signed_message);
             db.insert(entry)?;
