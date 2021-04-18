@@ -39,11 +39,6 @@ pub fn check_address(
 ) -> Result<Address> {
     let next_address = nth_address(descriptor, network, index)?;
 
-    println!(
-        "Checking address\nDerived:  {}\nExpected: {}",
-        next_address.clone(),
-        address.clone()
-    );
     if address == next_address {
         Ok(address)
     } else {
