@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chrono::Local;
 use rusqlite::{params, Connection};
 
@@ -29,11 +29,14 @@ impl Database {
     // Create SQLite database of addresses & signed messages
 
     pub fn new() -> Result<Self> {
-        let date_time = Local::now().format("%Y-%m-%d_%H-%M").to_string();
+        let date_time = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
         let filename = format!("{}_signed_addresses.db", date_time);
 
         // TODO: fail gracefully if the filename already exists
-        let connection = Connection::open(filename.clone())?;
+        let connection = match Connection::open(filename.clone()) {
+            Ok(conn) => conn,
+            Err(error) => return Err(anyhow!("Not able to create database file: {}", error)),
+        };
 
         connection.execute(
             "CREATE TABLE entries (
