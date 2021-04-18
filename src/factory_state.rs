@@ -149,7 +149,7 @@ impl Factory {
         );
 
         // Check if GPG exists
-        let test_gpg = Command::new("garblefake").arg("--list-secret-keys").spawn();
+        let test_gpg = Command::new("gpg").arg("--list-secret-keys").spawn();
 
         match test_gpg {
             Ok(_) => {}

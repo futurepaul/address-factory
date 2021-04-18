@@ -39,4 +39,8 @@ Now you can run Address Factory and follow the instructions and everything shoul
 - [x] sign the addresses with gpg
 - [x] write the signed addresses to an sqlite db
 - [x] parse non-coldcard xpubs 
-- [ ] fix all the obvious usability issues
+- [x] fix all the obvious usability issues
+- [ ] audit the bitcoin code 
+- [ ] switch to mainnet
+- [ ] reduce dependencies
+- [ ] deploy a donation page using this
