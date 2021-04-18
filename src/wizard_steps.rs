@@ -1,4 +1,9 @@
-use std::{fs, path::PathBuf, str::FromStr};
+use std::ffi::OsStr;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use anyhow::{bail, Result};
 use bdk::bitcoin::{self, util::bip32::ExtendedPubKey, Address, Network};
@@ -10,6 +15,44 @@ use crate::{util, util::build_descriptor, ColdcardJson, Desc, Factory};
 pub enum Mode {
     Coldcard,
     Generic,
+}
+
+/// Purge config and database files
+pub fn purge(config_dir: &Path) -> Result<()> {
+    let theme = ColorfulTheme::default();
+
+    println!(
+        "Are you sure you want to delete your config file and all the *.db files in this folder?"
+    );
+    println!("Cannot be undone!");
+    if Confirm::with_theme(&theme)
+        .with_prompt("Purge")
+        .interact()?
+    {
+        println!("Purging...");
+        // Delete the config file and its folder
+        if config_dir.exists() {
+            println!("Deleting address-factory.json");
+            fs::remove_dir_all(config_dir)?;
+        }
+
+        // Delete all the *.db files in this folder
+        for entry in fs::read_dir(".")? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_file() {
+                let extension = path.extension().unwrap_or_else(|| OsStr::new("nope"));
+                if extension == "db" {
+                    println!("Deleting {:?}", path);
+                    fs::remove_file(path)?;
+                }
+            }
+        }
+    } else {
+        println!("Purge canceled");
+    }
+    Ok(())
 }
 
 /// Ask whether using ColdCard or Generic

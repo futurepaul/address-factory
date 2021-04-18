@@ -7,7 +7,10 @@ use clap::Clap;
 use directories::ProjectDirs;
 
 #[derive(Clap)]
+#[clap(version = "0.1 Alpha", author = "Paul M. <paul@paul.lol>")]
 struct Opts {
+    #[clap(long)]
+    purge: bool,
     coldcard_json: Option<PathBuf>,
 }
 // The basic logic:
@@ -37,6 +40,13 @@ fn main() -> Result<()> {
     // Check for an existing address-factory.json in the config dir
     let path_to_config = config_dir.join("address-factory.json");
 
+    let opts: Opts = Opts::parse();
+
+    if opts.purge {
+        purge(config_dir)?;
+        return Ok(());
+    }
+
     // Create our factory object from all sorts of scenarios
     let mut factory = if path_to_config.exists() {
         println!(
@@ -48,8 +58,6 @@ fn main() -> Result<()> {
         // Load config as factory
         load_and_edit_factory(path_to_config)?
     } else {
-        let opts: Opts = Opts::parse();
-
         // If user supplied a coldcard-export.json we'll use that
         if let Some(path) = opts.coldcard_json {
             let (descriptor, network) = new_coldcard_from_file(&path)?;
