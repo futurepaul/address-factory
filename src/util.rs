@@ -63,6 +63,7 @@ pub fn script_type(path: &DerivationPath) -> Result<ScriptType> {
 }
 
 /// Build the descriptor string
+// TODO: am I actually using enough of the derivation path?
 pub fn build_descriptor(
     xpub: ExtendedPubKey,
     derivation_path: DerivationPath,
